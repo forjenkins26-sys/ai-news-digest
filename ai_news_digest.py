@@ -50,8 +50,8 @@ log = logging.getLogger("ai-news")
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# ── Free RSS feeds (AI focused) ──────────────────────────────────────────
-FEEDS = [
+# ── Free RSS feeds — AI focused ──────────────────────────────────────────
+FEEDS_AI = [
     ("TechCrunch AI",   "https://techcrunch.com/category/artificial-intelligence/feed/"),
     ("The Verge AI",    "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"),
     ("VentureBeat AI",  "https://venturebeat.com/category/ai/feed/"),
@@ -63,7 +63,17 @@ FEEDS = [
     ("Hugging Face",    "https://huggingface.co/blog/feed.xml"),
 ]
 
-# Keywords that bump a story's priority (impactful / actionable).
+# ── Free RSS feeds — QA / Test Automation focused ────────────────────────
+FEEDS_QA = [
+    ("TestGuild",            "https://testguild.com/feed/"),
+    ("Software Testing Help","https://www.softwaretestinghelp.com/feed/"),
+    ("Applitools",           "https://applitools.com/blog/feed/"),
+    ("BrowserStack",         "https://www.browserstack.com/blog/feed/"),
+    ("Cypress",              "https://www.cypress.io/blog/rss.xml"),
+    ("Automation Panda",     "https://automationpanda.com/feed/"),
+]
+
+# Keywords that bump an AI story's priority (impactful / actionable).
 HOT_KEYWORDS = {
     "openai": 5, "anthropic": 5, "claude": 5, "chatgpt": 5, "gpt-5": 6, "gpt5": 6,
     "gemini": 4, "google": 3, "meta": 3, "microsoft": 3, "deepmind": 4, "grok": 3,
@@ -74,10 +84,24 @@ HOT_KEYWORDS = {
     "job": 3, "jobs": 3, "layoff": 3, "automation": 3, "deepfake": 3, "scam": 3,
 }
 
+# Keywords that bump a QA / test-automation story's priority.
+QA_KEYWORDS = {
+    "selenium": 5, "playwright": 6, "cypress": 5, "appium": 5, "webdriver": 4,
+    "test automation": 6, "automated testing": 5, "sdet": 5, "qa": 3, "testing": 3,
+    "framework": 3, "ci/cd": 4, "pipeline": 3, "flaky": 4, "e2e": 4, "end-to-end": 4,
+    "api testing": 5, "performance testing": 4, "load testing": 4, "regression": 3,
+    "ai testing": 6, "ai agent": 5, "self-healing": 5, "codeless": 3, "low-code": 3,
+    "bdd": 3, "cucumber": 3, "junit": 3, "pytest": 4, "testng": 3, "allure": 3,
+    "release": 2, "launch": 3, "open source": 3, "free": 2, "tutorial": 2,
+}
+
 WINDOW_HOURS = 24
 FALLBACK_HOURS = 48
-MAX_STORIES = 12
-MIN_STORIES = 8
+# Per-section caps
+MAX_AI = 10
+MIN_AI = 6
+MAX_QA = 6
+MIN_QA = 3
 
 
 def _entry_dt(entry):
@@ -101,22 +125,22 @@ def _clean(text):
     return text
 
 
-def _score(title, summary):
+def _score(title, summary, keywords):
     blob = f"{title} {summary}".lower()
-    return sum(w for kw, w in HOT_KEYWORDS.items() if kw in blob)
+    return sum(w for kw, w in keywords.items() if kw in blob)
 
 
 def _norm_title(title):
     return re.sub(r"[^a-z0-9]", "", title.lower())[:60]
 
 
-def fetch_stories():
+def fetch_stories(feeds, keywords, category, min_n, max_n):
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(hours=WINDOW_HOURS)
     fallback_cutoff = now - timedelta(hours=FALLBACK_HOURS)
 
     raw = []
-    for source, url in FEEDS:
+    for source, url in feeds:
         try:
             resp = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
             feed = feedparser.parse(resp.content)
@@ -132,12 +156,12 @@ def fetch_stories():
                 dt = _entry_dt(e)
                 raw.append({
                     "source": source, "title": title, "summary": summary[:400],
-                    "link": link, "dt": dt,
-                    "score": _score(title, summary),
+                    "link": link, "dt": dt, "category": category,
+                    "score": _score(title, summary, keywords),
                 })
-            log.info("Fetched %d from %s", len(feed.entries), source)
+            log.info("[%s] Fetched %d from %s", category, len(feed.entries), source)
         except Exception as ex:
-            log.warning("Feed failed %s: %s", source, ex)
+            log.warning("[%s] Feed failed %s: %s", category, source, ex)
 
     # dedupe by normalized title (keep highest score)
     seen = {}
@@ -151,16 +175,15 @@ def fetch_stories():
         return [s for s in items if s["dt"] and s["dt"] >= cut]
 
     recent = within(cutoff)
-    if len(recent) < MIN_STORIES:
-        log.info("Only %d in 24h, widening to 48h", len(recent))
+    if len(recent) < min_n:
+        log.info("[%s] Only %d in 24h, widening to 48h", category, len(recent))
         recent = within(fallback_cutoff)
-    if len(recent) < MIN_STORIES:
-        # last resort: take undated/older items too, by score
-        recent = items
+    if len(recent) < min_n:
+        recent = items  # last resort: include undated/older, by score
 
     recent.sort(key=lambda s: (s["score"], s["dt"] or datetime.min.replace(tzinfo=timezone.utc)),
                 reverse=True)
-    return recent[:MAX_STORIES]
+    return recent[:max_n]
 
 
 # ── Optional: Gemini writes punchy summaries (free tier) ─────────────────
@@ -198,47 +221,66 @@ def gemini_rewrite(stories, api_key):
         return None
 
 
-def build_html(stories, ai):
-    date_str = datetime.now(IST).strftime("%b %d")
-    top = stories[0]["title"] if stories else "AI news"
-
-    parts = [f"""\
-<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a1a1a;">
-<p>Hey 👋</p>
-<p>Every day I think AI has peaked. Every day I'm wrong.</p>
-<p>Here's what dropped in the last 24 hours — and what actually matters.</p>
-<hr style="border:none;border-top:2px solid #eee;">
-<h2 style="margin:18px 0 4px;">🔥 Today's Top Stories</h2>
-<p style="color:#666;margin-top:0;">{len(stories)} updates that matter.</p>
-"""]
-
-    for i, s in enumerate(stories):
-        a = ai.get(i + 1) if ai else None
-        emoji = (a or {}).get("emoji", "🚀")
-        headline = (a or {}).get("headline") or s["title"]
-        if a:
-            block = (
-                f'<p style="margin:4px 0;"><b>What happened:</b> {html.escape(a.get("what",""))}</p>'
-                f'<p style="margin:4px 0;"><b>Why it matters:</b> {html.escape(a.get("why",""))}</p>'
-                f'<p style="margin:4px 0;"><b>What to do:</b> {html.escape(a.get("do",""))}</p>'
-            )
-        else:
-            block = f'<p style="margin:4px 0;color:#333;">{html.escape(s["summary"]) or s["title"]}</p>'
-        parts.append(f"""
+def _render_story(s, a, default_emoji):
+    emoji = (a or {}).get("emoji", default_emoji)
+    headline = (a or {}).get("headline") or s["title"]
+    if a:
+        block = (
+            f'<p style="margin:4px 0;"><b>What happened:</b> {html.escape(a.get("what",""))}</p>'
+            f'<p style="margin:4px 0;"><b>Why it matters:</b> {html.escape(a.get("why",""))}</p>'
+            f'<p style="margin:4px 0;"><b>What to do:</b> {html.escape(a.get("do",""))}</p>'
+        )
+    else:
+        block = f'<p style="margin:4px 0;color:#333;">{html.escape(s["summary"]) or s["title"]}</p>'
+    return f"""
 <div style="margin:22px 0;padding-bottom:16px;border-bottom:1px solid #f0f0f0;">
   <h3 style="margin:0 0 8px;">{emoji} {html.escape(headline)}</h3>
   {block}
   <p style="margin:8px 0 0;"><a href="{html.escape(s['link'])}" style="color:#0b66c3;">Read on {html.escape(s['source'])} →</a></p>
-</div>""")
+</div>"""
+
+
+def build_html(ai_stories, qa_stories, gmap):
+    """gmap: dict keyed by 1-based index over the combined (ai + qa) list, or None."""
+    date_str = datetime.now(IST).strftime("%b %d")
+    top = (ai_stories or qa_stories)[0]["title"] if (ai_stories or qa_stories) else "AI & QA news"
+
+    parts = [f"""\
+<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a1a1a;">
+<p>Hey 👋</p>
+<p>Your daily edge in <b>AI</b> and <b>QA / Test Automation</b> — what dropped in the last 24 hours and why it matters.</p>
+"""]
+
+    # ── AI section ──
+    parts.append(f"""
+<hr style="border:none;border-top:2px solid #eee;">
+<h2 style="margin:18px 0 4px;">🔥 AI News</h2>
+<p style="color:#666;margin-top:0;">{len(ai_stories)} updates that matter.</p>
+""")
+    for i, s in enumerate(ai_stories):
+        a = gmap.get(i + 1) if gmap else None
+        parts.append(_render_story(s, a, "🚀"))
+
+    # ── QA section ──
+    if qa_stories:
+        offset = len(ai_stories)
+        parts.append(f"""
+<hr style="border:none;border-top:2px solid #eee;">
+<h2 style="margin:18px 0 4px;">🧪 QA &amp; Test Automation</h2>
+<p style="color:#666;margin-top:0;">{len(qa_stories)} picks for SDETs.</p>
+""")
+        for j, s in enumerate(qa_stories):
+            a = gmap.get(offset + j + 1) if gmap else None
+            parts.append(_render_story(s, a, "🧪"))
 
     parts.append("""
 <hr style="border:none;border-top:2px solid #eee;">
-<p>That's your AI edge for today.</p>
+<p>That's your AI + QA edge for today.</p>
 <p style="color:#666;">If you're not paying attention to AI right now — AI is still paying attention to you.</p>
 <p>See you tomorrow,<br>Your Daily AI Agent 🤖</p>
 </div>""")
 
-    subject = f"🤖 {date_str} — {top[:60]}"
+    subject = f"🤖 {date_str} — AI & QA: {top[:50]}"
     return subject, "".join(parts)
 
 
@@ -261,16 +303,17 @@ def send_email(subject, body_html):
 
 
 def main():
-    stories = fetch_stories()
-    log.info("Selected %d stories", len(stories))
-    if not stories:
+    ai_stories = fetch_stories(FEEDS_AI, HOT_KEYWORDS, "AI", MIN_AI, MAX_AI)
+    qa_stories = fetch_stories(FEEDS_QA, QA_KEYWORDS, "QA", MIN_QA, MAX_QA)
+    log.info("Selected %d AI + %d QA stories", len(ai_stories), len(qa_stories))
+    if not ai_stories and not qa_stories:
         log.error("No stories found — not sending.")
         return 1
 
     api_key = os.environ.get("GEMINI_API_KEY")
-    ai = gemini_rewrite(stories, api_key) if api_key else None
+    gmap = gemini_rewrite(ai_stories + qa_stories, api_key) if api_key else None
 
-    subject, body = build_html(stories, ai)
+    subject, body = build_html(ai_stories, qa_stories, gmap)
     send_email(subject, body)
     return 0
 

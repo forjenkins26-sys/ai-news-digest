@@ -3,12 +3,16 @@
 Standalone bot — **completely independent** of the Naukri / LinkedIn job bot.
 Own folder, own GitHub repo, own Gmail account (`aitestengineer26@gmail.com`).
 
-Every morning at **08:00 IST** it:
-1. Fetches AI news from 9 free RSS feeds (TechCrunch, The Verge, VentureBeat,
-   Ars Technica, MIT Tech Review, Google AI, OpenAI, DeepMind, Hugging Face)
-2. Keeps stories from the **last 24h** (widens to 48h if too few)
-3. Dedupes + ranks by impact keywords (OpenAI / launch / funding / jobs …)
-4. Emails the top ~12 as a newsletter
+Every morning at **08:00 IST** it emails two sections:
+- **🔥 AI News** — 9 feeds (TechCrunch, The Verge, VentureBeat, Ars Technica,
+  MIT Tech Review, Google AI, OpenAI, DeepMind, Hugging Face)
+- **🧪 QA & Test Automation** — 6 feeds (TestGuild, Software Testing Help,
+  Applitools, BrowserStack, Cypress, Automation Panda)
+
+For each section it:
+1. Keeps stories from the **last 24h** (widens to 48h if too few — QA blogs post slower)
+2. Dedupes + ranks by impact keywords (AI: OpenAI/launch/funding; QA: Playwright/Selenium/test automation/SDET)
+3. Emails the top picks (AI ~10, QA ~6)
 
 Runs **free on GitHub Actions** — cloud, laptop can be off. RSS has no bot wall.
 
