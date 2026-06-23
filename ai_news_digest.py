@@ -114,10 +114,10 @@ QA_KEYWORDS = {
 
 WINDOW_HOURS = 24
 FALLBACK_HOURS = 48
-# Per-section caps
-MAX_AI = 10
-MIN_AI = 6
-MAX_QA = 8
+# Per-section caps — "Top 5 Stories" style
+MAX_AI = 5
+MIN_AI = 3
+MAX_QA = 5
 MIN_QA = 3
 
 
@@ -203,30 +203,49 @@ def fetch_stories(feeds, keywords, category, min_n, max_n):
     return recent[:max_n]
 
 
-# ── Optional: Gemini writes punchy summaries (free tier) ─────────────────
+def fetch_article_text(url, limit=2600):
+    """Best-effort: pull readable paragraph text from an article page."""
+    try:
+        r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+        h = r.text
+        # drop non-content blocks
+        h = re.sub(r"(?is)<(script|style|nav|footer|header|aside|form)[^>]*>.*?</\1>", " ", h)
+        paras = re.findall(r"(?is)<p[^>]*>(.*?)</p>", h)
+        text = " ".join(_clean(p) for p in paras if len(_clean(p)) > 40)
+        return text[:limit]
+    except Exception:
+        return ""
+
+
+# ── Optional: Gemini writes rich bullet summaries (free tier) ────────────
 def gemini_rewrite(stories, api_key):
-    """Return dict idx->fields via one Gemini call. None on fail."""
-    bullet = "\n".join(
-        f"{i+1}. [{s['source']}] {s['title']} — {s['summary']}"
-        for i, s in enumerate(stories)
-    )
+    """Return dict idx->{emoji, headline, bullets[]} via one Gemini call. None on fail."""
+    blocks = []
+    for i, s in enumerate(stories):
+        body = fetch_article_text(s["link"]) or s["summary"]
+        blocks.append(f"### STORY {i+1}\nSource: {s['source']}\nTitle: {s['title']}\nArticle: {body}")
+    joined = "\n\n".join(blocks)
+
     prompt = (
-        "You are a daily AI newsletter writer. For each numbered story below, "
-        "write 3 short lines in plain English (a 15-year-old understands), high energy, "
-        "no corporate fluff:\n"
-        "what: <the news, 1 sentence>\n"
-        "why: <real-world impact on jobs/money/tools, 1 sentence>\n"
-        "do: <1 specific action or thing to watch>\n\n"
-        "Return ONLY valid JSON: a list of objects with keys idx, emoji, headline, what, why, do. "
-        "headline = 6-8 word punchy rewrite. emoji = one relevant emoji.\n\n"
-        f"STORIES:\n{bullet}"
+        "You are a sharp daily tech-news editor. For each numbered story, write a "
+        "punchy short-form brief like a premium newsletter.\n"
+        "Rules:\n"
+        "- headline: rewrite to 8-12 words, specific and curiosity-driving (keep key names/numbers).\n"
+        "- bullets: 4 to 5 bullets. Each is ONE tight sentence with a concrete fact, number, "
+        "name, or implication from the article. No fluff, no 'in conclusion'. Plain English.\n"
+        "- Only use facts present in the provided article text. Do NOT invent statistics, "
+        "dollar amounts, dates, or names that are not in the text.\n"
+        "- emoji: one relevant emoji.\n\n"
+        "Return ONLY valid JSON: a list of objects with keys idx (int), emoji, headline, "
+        "bullets (list of strings).\n\n"
+        f"{joined}"
     )
     try:
         url = ("https://generativelanguage.googleapis.com/v1beta/models/"
                "gemini-2.0-flash:generateContent?key=" + api_key)
-        r = requests.post(url, timeout=60, json={
+        r = requests.post(url, timeout=120, json={
             "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.7, "responseMimeType": "application/json"},
+            "generationConfig": {"temperature": 0.6, "responseMimeType": "application/json"},
         })
         r.raise_for_status()
         text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
@@ -238,66 +257,74 @@ def gemini_rewrite(stories, api_key):
         return None
 
 
-def _render_story(s, a, default_emoji):
+def _src_date(s):
+    return s["dt"].strftime("%b %d, %Y") if s.get("dt") else "recent"
+
+
+def _render_story(s, a, num, total, default_emoji):
     emoji = (a or {}).get("emoji", default_emoji)
     headline = (a or {}).get("headline") or s["title"]
-    if a:
-        block = (
-            f'<p style="margin:4px 0;"><b>What happened:</b> {html.escape(a.get("what",""))}</p>'
-            f'<p style="margin:4px 0;"><b>Why it matters:</b> {html.escape(a.get("why",""))}</p>'
-            f'<p style="margin:4px 0;"><b>What to do:</b> {html.escape(a.get("do",""))}</p>'
-        )
-    else:
-        block = f'<p style="margin:4px 0;color:#333;">{html.escape(s["summary"]) or s["title"]}</p>'
+    bullets = (a or {}).get("bullets") if a else None
+    if not bullets:
+        bullets = [s["summary"] or s["title"]]   # fallback: RSS summary as one bullet
+
+    li = "".join(
+        f'<li style="margin:7px 0;line-height:1.5;">{html.escape(str(b))}</li>'
+        for b in bullets
+    )
     return f"""
-<div style="margin:22px 0;padding-bottom:16px;border-bottom:1px solid #f0f0f0;">
-  <h3 style="margin:0 0 8px;">{emoji} {html.escape(headline)}</h3>
-  {block}
-  <p style="margin:8px 0 0;"><a href="{html.escape(s['link'])}" style="color:#0b66c3;">Read on {html.escape(s['source'])} →</a></p>
-</div>"""
+<div style="margin:26px 0;">
+  <p style="margin:0 0 2px;font-size:12px;letter-spacing:1px;color:#999;text-transform:uppercase;">
+    Story {num:02d} of {total:02d}</p>
+  <h3 style="margin:0 0 4px;font-size:19px;line-height:1.3;">{emoji} {html.escape(headline)}</h3>
+  <p style="margin:0 0 8px;font-size:13px;color:#888;">
+    📰 Source: <a href="{html.escape(s['link'])}" style="color:#0b66c3;text-decoration:none;">{html.escape(s['source'])}</a> — {_src_date(s)}</p>
+  <ul style="margin:0;padding-left:20px;color:#222;">{li}</ul>
+</div>
+<hr style="border:none;border-top:1px solid #eee;margin:0;">"""
 
 
 def build_html(ai_stories, qa_stories, gmap):
     """gmap: dict keyed by 1-based index over the combined (ai + qa) list, or None."""
-    date_str = datetime.now(IST).strftime("%b %d")
-    top = (ai_stories or qa_stories)[0]["title"] if (ai_stories or qa_stories) else "AI & QA news"
+    now = datetime.now(IST)
+    long_date = now.strftime("%A, %B %d, %Y")
+    greet = "Good morning" if now.hour < 12 else "Hello"
+
+    def section(title, sub, stories, start_idx, default_emoji):
+        out = [f"""
+<h2 style="margin:26px 0 2px;font-size:22px;">{title}</h2>
+<p style="color:#666;margin:0 0 6px;font-size:13px;">{sub}</p>
+<hr style="border:none;border-top:2px solid #1a1a1a;margin:6px 0 0;">"""]
+        n = len(stories)
+        for k, s in enumerate(stories):
+            a = gmap.get(start_idx + k + 1) if gmap else None
+            out.append(_render_story(s, a, k + 1, n, default_emoji))
+        return "".join(out)
 
     parts = [f"""\
-<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:640px;margin:0 auto;color:#1a1a1a;">
-<p>Hey 👋</p>
-<p>Your daily edge in <b>AI</b> and <b>QA / Test Automation</b> — what dropped in the last 24 hours and why it matters.</p>
+<div style="font-family:-apple-system,Segoe UI,Arial,sans-serif;max-width:660px;margin:0 auto;color:#1a1a1a;">
+<div style="text-align:center;padding:8px 0 4px;">
+  <h1 style="margin:0;font-size:26px;">🤖 Your Daily AI & QA Digest</h1>
+  <p style="margin:6px 0 0;color:#666;font-size:14px;">📅 {long_date}</p>
+</div>
+<p style="margin:18px 0;">{greet}! Here are today's top stories from the last 24 hours — curated, filtered, and summarized into punchy short-form bullets. Everything you need for your morning session. ☕</p>
 """]
 
-    # ── AI section ──
-    parts.append(f"""
-<hr style="border:none;border-top:2px solid #eee;">
-<h2 style="margin:18px 0 4px;">🔥 AI News</h2>
-<p style="color:#666;margin-top:0;">{len(ai_stories)} updates that matter.</p>
-""")
-    for i, s in enumerate(ai_stories):
-        a = gmap.get(i + 1) if gmap else None
-        parts.append(_render_story(s, a, "🚀"))
-
-    # ── QA section ──
+    parts.append(section("🔥 AI News",
+                         f"Top {len(ai_stories)} AI stories of the day",
+                         ai_stories, 0, "🚀"))
     if qa_stories:
-        offset = len(ai_stories)
-        parts.append(f"""
-<hr style="border:none;border-top:2px solid #eee;">
-<h2 style="margin:18px 0 4px;">🧪 QA &amp; AI Testing</h2>
-<p style="color:#666;margin-top:0;">{len(qa_stories)} picks — test automation + LLM/agents/eval (MCP, RAG, LangChain, n8n).</p>
-""")
-        for j, s in enumerate(qa_stories):
-            a = gmap.get(offset + j + 1) if gmap else None
-            parts.append(_render_story(s, a, "🧪"))
+        parts.append(section("🧪 QA &amp; AI Testing",
+                             f"Top {len(qa_stories)} — test automation + LLM/agents/eval (MCP, RAG, LangChain, n8n)",
+                             qa_stories, len(ai_stories), "🧪"))
 
     parts.append("""
-<hr style="border:none;border-top:2px solid #eee;">
-<p>That's your AI + QA edge for today.</p>
-<p style="color:#666;">If you're not paying attention to AI right now — AI is still paying attention to you.</p>
-<p>See you tomorrow,<br>Your Daily AI Agent 🤖</p>
+<p style="margin:22px 0 4px;">That's your AI + QA edge for today.</p>
+<p style="color:#666;margin:0;">If you're not paying attention to AI right now — AI is still paying attention to you.</p>
+<p style="margin:14px 0 0;">See you tomorrow,<br>Your Daily AI Agent 🤖</p>
 </div>""")
 
-    subject = f"🤖 {date_str} — AI & QA: {top[:50]}"
+    subject = f"🤖 {now.strftime('%b %d')} — Your Daily AI & QA Digest (Top {len(ai_stories)+len(qa_stories)})"
     return subject, "".join(parts)
 
 
