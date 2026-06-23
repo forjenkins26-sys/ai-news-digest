@@ -68,8 +68,6 @@ FEEDS_AI = [
     ("DeepMind",        "https://deepmind.google/blog/rss.xml"),
     ("Hugging Face",    "https://huggingface.co/blog/feed.xml"),
     ("GitHub Changelog","https://github.blog/changelog/feed/"),
-    # Topic connectors via Google News RSS (no native feed of their own)
-    ("Higgsfield",      "https://news.google.com/rss/search?q=%22higgsfield%22&hl=en-US&gl=US&ceid=US:en"),
 ]
 
 # ── Free RSS feeds — QA / Test Automation + AI Testing (LLM/agents/eval) ──
@@ -98,7 +96,6 @@ HOT_KEYWORDS = {
     "agent": 4, "agentic": 4, "model": 2, "open source": 4, "open-source": 4,
     "free": 2, "api": 2, "regulation": 3, "ban": 3, "lawsuit": 3, "policy": 2,
     "job": 3, "jobs": 3, "layoff": 3, "automation": 3, "deepfake": 3, "scam": 3,
-    "higgsfield": 5, "ai video": 4, "text-to-video": 4, "veo": 3, "sora": 3,
 }
 
 # Keywords that bump a QA / test-automation / AI-testing story's priority.
@@ -215,8 +212,6 @@ def fetch_stories(feeds, keywords, category, min_n, max_n):
 
 def fetch_article_text(url, limit=2600):
     """Best-effort: pull readable paragraph text from an article page."""
-    if "news.google.com" in url:
-        return ""   # Google News links are redirects — use the RSS summary instead
     try:
         r = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
         h = r.text
