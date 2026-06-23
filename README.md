@@ -1,7 +1,7 @@
 # Daily AI News Digest
 
 Standalone bot — **completely independent** of the Naukri / LinkedIn job bot.
-Own folder, own GitHub repo, own Gmail account (`aitestengieer26@gmail.com`).
+Own folder, own GitHub repo, own Gmail account (`aitestengineer26@gmail.com`).
 
 Every morning at **08:00 IST** it:
 1. Fetches AI news from 9 free RSS feeds (TechCrunch, The Verge, VentureBeat,
@@ -15,14 +15,14 @@ Runs **free on GitHub Actions** — cloud, laptop can be off. RSS has no bot wal
 ## Setup
 
 1. Create a new GitHub repo (e.g. `ai-news-digest`), push this folder to it.
-2. Generate a Gmail **app password** for `aitestengieer26@gmail.com`:
+2. Generate a Gmail **app password** for `aitestengineer26@gmail.com`:
    https://myaccount.google.com/apppasswords (needs 2FA on the account).
 3. In the repo → Settings → Secrets and variables → Actions, add:
    | Secret | Value |
    |---|---|
-   | `GMAIL_ADDRESS` | `aitestengieer26@gmail.com` |
+   | `GMAIL_ADDRESS` | `aitestengineer26@gmail.com` |
    | `GMAIL_APP_PASSWORD` | the 16-char app password |
-   | `REPORT_EMAIL` | `aitestengieer26@gmail.com` |
+   | `REPORT_EMAIL` | `aitestengineer26@gmail.com` |
    | `GEMINI_API_KEY` | *(optional)* free key from aistudio.google.com/apikey |
 4. Actions tab → "Daily AI News Digest" → Run workflow (test now).
 

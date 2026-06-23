@@ -8,7 +8,7 @@ newsletter using Gmail SMTP.
 Runs free on GitHub Actions (cloud IP is fine — RSS has no bot wall).
 
 Env vars (set as GitHub Secrets, or local .env):
-  GMAIL_ADDRESS       - sender Gmail  (aitestengieer26@gmail.com)
+  GMAIL_ADDRESS       - sender Gmail  (aitestengineer26@gmail.com)
   GMAIL_APP_PASSWORD  - 16-char app password for that account
   REPORT_EMAIL        - recipient (defaults to GMAIL_ADDRESS)
   GEMINI_API_KEY      - OPTIONAL. If set, Gemini writes punchy summaries.
