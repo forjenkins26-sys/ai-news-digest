@@ -63,14 +63,21 @@ FEEDS_AI = [
     ("Hugging Face",    "https://huggingface.co/blog/feed.xml"),
 ]
 
-# ── Free RSS feeds — QA / Test Automation focused ────────────────────────
+# ── Free RSS feeds — QA / Test Automation + AI Testing (LLM/agents/eval) ──
 FEEDS_QA = [
+    # Classic QA / test automation
     ("TestGuild",            "https://testguild.com/feed/"),
     ("Software Testing Help","https://www.softwaretestinghelp.com/feed/"),
     ("Applitools",           "https://applitools.com/blog/feed/"),
     ("BrowserStack",         "https://www.browserstack.com/blog/feed/"),
     ("Cypress",              "https://www.cypress.io/blog/rss.xml"),
     ("Automation Panda",     "https://automationpanda.com/feed/"),
+    # AI testing / LLM / agents / eval (MCP, RAG, LangChain, CrewAI, n8n, evals)
+    ("CrewAI",               "https://blog.crewai.com/rss/"),
+    ("n8n",                  "https://n8n.io/blog/feed/"),
+    ("InfoQ AI/ML",          "https://feed.infoq.com/ai-ml-data-eng/"),
+    ("Simon Willison",       "https://simonwillison.net/atom/everything/"),
+    ("MarkTechPost",         "https://www.marktechpost.com/feed/"),
 ]
 
 # Keywords that bump an AI story's priority (impactful / actionable).
@@ -84,14 +91,24 @@ HOT_KEYWORDS = {
     "job": 3, "jobs": 3, "layoff": 3, "automation": 3, "deepfake": 3, "scam": 3,
 }
 
-# Keywords that bump a QA / test-automation story's priority.
+# Keywords that bump a QA / test-automation / AI-testing story's priority.
 QA_KEYWORDS = {
+    # classic QA / test automation
     "selenium": 5, "playwright": 6, "cypress": 5, "appium": 5, "webdriver": 4,
     "test automation": 6, "automated testing": 5, "sdet": 5, "qa": 3, "testing": 3,
     "framework": 3, "ci/cd": 4, "pipeline": 3, "flaky": 4, "e2e": 4, "end-to-end": 4,
     "api testing": 5, "performance testing": 4, "load testing": 4, "regression": 3,
-    "ai testing": 6, "ai agent": 5, "self-healing": 5, "codeless": 3, "low-code": 3,
+    "self-healing": 5, "codeless": 3, "low-code": 3,
     "bdd": 3, "cucumber": 3, "junit": 3, "pytest": 4, "testng": 3, "allure": 3,
+    # AI testing / LLM / agents / eval (user-requested topics)
+    "ai testing": 6, "ai agent": 6, "ai agents": 6, "agentic": 6, "agent": 4,
+    "mcp": 6, "model context protocol": 7, "rag": 6, "retrieval augmented": 6,
+    "llm": 5, "large language model": 5, "llm eval": 7, "llm evaluation": 7,
+    "evaluation": 4, "eval": 4, "benchmark": 4, "deepeval": 7, "ai harness": 6,
+    "langchain": 6, "langgraph": 6, "langflow": 6, "crewai": 6, "crew ai": 6,
+    "autogen": 5, "n8n": 6, "workflow automation": 4, "guardrails": 5,
+    "prompt injection": 6, "hallucination": 5, "vector": 3, "embedding": 3,
+    # generic
     "release": 2, "launch": 3, "open source": 3, "free": 2, "tutorial": 2,
 }
 
@@ -100,7 +117,7 @@ FALLBACK_HOURS = 48
 # Per-section caps
 MAX_AI = 10
 MIN_AI = 6
-MAX_QA = 6
+MAX_QA = 8
 MIN_QA = 3
 
 
@@ -266,8 +283,8 @@ def build_html(ai_stories, qa_stories, gmap):
         offset = len(ai_stories)
         parts.append(f"""
 <hr style="border:none;border-top:2px solid #eee;">
-<h2 style="margin:18px 0 4px;">🧪 QA &amp; Test Automation</h2>
-<p style="color:#666;margin-top:0;">{len(qa_stories)} picks for SDETs.</p>
+<h2 style="margin:18px 0 4px;">🧪 QA &amp; AI Testing</h2>
+<p style="color:#666;margin-top:0;">{len(qa_stories)} picks — test automation + LLM/agents/eval (MCP, RAG, LangChain, n8n).</p>
 """)
         for j, s in enumerate(qa_stories):
             a = gmap.get(offset + j + 1) if gmap else None
