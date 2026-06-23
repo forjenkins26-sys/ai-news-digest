@@ -238,13 +238,15 @@ def gemini_rewrite(stories, api_key):
         "punchy short-form brief like a premium newsletter.\n"
         "Rules:\n"
         "- headline: rewrite to 8-12 words, specific and curiosity-driving (keep key names/numbers).\n"
+        "- category: 1-3 word tag for the story type (e.g. Model Release, Funding, Big Tech, "
+        "Regulation, Research, AI Agents, Tooling, Enterprise AI, Jobs).\n"
         "- bullets: 4 to 5 bullets. Each is ONE tight sentence with a concrete fact, number, "
         "name, or implication from the article. No fluff, no 'in conclusion'. Plain English.\n"
         "- Only use facts present in the provided article text. Do NOT invent statistics, "
         "dollar amounts, dates, or names that are not in the text.\n"
         "- emoji: one relevant emoji.\n\n"
         "Return ONLY valid JSON: a list of objects with keys idx (int), emoji, headline, "
-        "bullets (list of strings).\n\n"
+        "category, bullets (list of strings).\n\n"
         f"{joined}"
     )
     try:
@@ -271,9 +273,14 @@ def _src_date(s):
 def _render_story(s, a, num, total, default_emoji):
     emoji = (a or {}).get("emoji", default_emoji)
     headline = (a or {}).get("headline") or s["title"]
+    category = (a or {}).get("category") if a else None
     bullets = (a or {}).get("bullets") if a else None
     if not bullets:
         bullets = [s["summary"] or s["title"]]   # fallback: RSS summary as one bullet
+
+    label = f"Story {num:02d} of {total:02d}"
+    if category:
+        label += f" &nbsp;·&nbsp; {html.escape(str(category))}"
 
     li = "".join(
         f'<li style="margin:7px 0;line-height:1.5;">{html.escape(str(b))}</li>'
@@ -282,7 +289,7 @@ def _render_story(s, a, num, total, default_emoji):
     return f"""
 <div style="margin:26px 0;">
   <p style="margin:0 0 2px;font-size:12px;letter-spacing:1px;color:#999;text-transform:uppercase;">
-    Story {num:02d} of {total:02d}</p>
+    {label}</p>
   <h3 style="margin:0 0 4px;font-size:19px;line-height:1.3;">{emoji} {html.escape(headline)}</h3>
   <p style="margin:0 0 8px;font-size:13px;color:#888;">
     📰 Source: <a href="{html.escape(s['link'])}" style="color:#0b66c3;text-decoration:none;">{html.escape(s['source'])}</a> — {_src_date(s)}</p>
@@ -324,6 +331,25 @@ def build_html(ai_stories, qa_stories, gmap):
         parts.append(section("🧪 QA &amp; AI Testing",
                              f"Top {len(qa_stories)} — test automation + LLM/agents/eval (MCP, RAG, LangChain, n8n)",
                              qa_stories, len(ai_stories), "🧪"))
+
+    # ── End-of-digest summary recap ──
+    def recap(stories, start_idx):
+        rows = []
+        for k, s in enumerate(stories):
+            a = gmap.get(start_idx + k + 1) if gmap else None
+            hl = (a or {}).get("headline") or s["title"]
+            rows.append(f'<li style="margin:5px 0;">{html.escape(hl)} '
+                        f'<span style="color:#999;">— {html.escape(s["source"])}</span></li>')
+        return "".join(rows)
+
+    summary_parts = [f'<h3 style="margin:0 0 6px;">🔥 AI</h3><ol style="margin:0 0 14px;padding-left:22px;">{recap(ai_stories, 0)}</ol>']
+    if qa_stories:
+        summary_parts.append(f'<h3 style="margin:0 0 6px;">🧪 QA &amp; AI Testing</h3><ol style="margin:0;padding-left:22px;">{recap(qa_stories, len(ai_stories))}</ol>')
+    parts.append(f"""
+<div style="margin:28px 0 0;padding:16px 18px;background:#f7f7f9;border-radius:8px;">
+  <p style="margin:0 0 10px;font-weight:600;font-size:15px;">📅 Today's Digest Summary</p>
+  {''.join(summary_parts)}
+</div>""")
 
     parts.append("""
 <p style="margin:22px 0 4px;">That's your AI + QA edge for today.</p>
