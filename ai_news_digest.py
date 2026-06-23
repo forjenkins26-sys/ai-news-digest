@@ -50,17 +50,24 @@ log = logging.getLogger("ai-news")
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
-# ── Free RSS feeds — AI focused ──────────────────────────────────────────
+# ── Free RSS feeds — AI focused (same coverage Feedly/Zapier pulled) ──────
 FEEDS_AI = [
+    # News outlets
     ("TechCrunch AI",   "https://techcrunch.com/category/artificial-intelligence/feed/"),
     ("The Verge AI",    "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml"),
     ("VentureBeat AI",  "https://venturebeat.com/category/ai/feed/"),
     ("Ars Technica AI", "https://arstechnica.com/ai/feed/"),
     ("MIT Tech Review", "https://www.technologyreview.com/topic/artificial-intelligence/feed"),
-    ("Google AI",       "https://blog.google/technology/ai/rss/"),
+    ("The Decoder",     "https://the-decoder.com/feed/"),
+    ("AI News",         "https://www.artificialintelligence-news.com/feed/"),
+    ("Synced",          "https://syncedreview.com/feed/"),
+    # Primary / company sources (Anthropic has no public RSS — covered via the outlets above)
     ("OpenAI",          "https://openai.com/news/rss.xml"),
+    ("Google AI",       "https://blog.google/technology/ai/rss/"),
+    ("Google Cloud AI", "https://cloudblog.withgoogle.com/products/ai-machine-learning/rss/"),
     ("DeepMind",        "https://deepmind.google/blog/rss.xml"),
     ("Hugging Face",    "https://huggingface.co/blog/feed.xml"),
+    ("GitHub Changelog","https://github.blog/changelog/feed/"),
 ]
 
 # ── Free RSS feeds — QA / Test Automation + AI Testing (LLM/agents/eval) ──

@@ -4,8 +4,11 @@ Standalone bot — **completely independent** of the Naukri / LinkedIn job bot.
 Own folder, own GitHub repo, own Gmail account (`aitestengineer26@gmail.com`).
 
 Every morning at **08:00 IST** it emails two sections:
-- **🔥 AI News** — 9 feeds (TechCrunch, The Verge, VentureBeat, Ars Technica,
-  MIT Tech Review, Google AI, OpenAI, DeepMind, Hugging Face)
+- **🔥 AI News** — 14 feeds (TechCrunch, The Verge, VentureBeat, Ars Technica,
+  MIT Tech Review, The Decoder, AI News, Synced, OpenAI, Google AI,
+  Google Cloud AI, DeepMind, Hugging Face, GitHub Changelog) — same coverage
+  the old Feedly/Zapier digest pulled. (Anthropic has no public RSS; its news is
+  covered via TechCrunch / The Decoder / Ars Technica.)
 - **🧪 QA & Test Automation** — 6 feeds (TestGuild, Software Testing Help,
   Applitools, BrowserStack, Cypress, Automation Panda)
 
