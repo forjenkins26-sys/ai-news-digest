@@ -1,3 +1,5 @@
 .env
 __pycache__/
 *.pyc
+*.bak-*
+digest_preview.html

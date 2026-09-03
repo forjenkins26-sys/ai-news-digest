@@ -244,9 +244,16 @@ def gemini_rewrite(stories, api_key):
         "name, or implication from the article. No fluff, no 'in conclusion'. Plain English.\n"
         "- Only use facts present in the provided article text. Do NOT invent statistics, "
         "dollar amounts, dates, or names that are not in the text.\n"
+        "- BANNED PHRASES (never use in headline or bullets): 'game-changer', 'dive deep', "
+        "'leverage', 'in today's fast-paced world', 'it is worth noting', 'revolutionize', "
+        "'cutting-edge', 'unlock the power', 'supercharge', 'seamless', 'robust'. "
+        "Write like a smart friend texting the news, not a press release.\n"
+        "- action: ONE short sentence (max 18 words) — the concrete thing the reader should "
+        "do or watch next because of this story (try the tool, watch the rollout, update a "
+        "workflow). Specific, not generic. Grounded only in the article facts.\n"
         "- emoji: one relevant emoji.\n\n"
         "Return ONLY valid JSON: a list of objects with keys idx (int), emoji, headline, "
-        "category, bullets (list of strings).\n\n"
+        "category, bullets (list of strings), action (string).\n\n"
         f"{joined}"
     )
     try:
@@ -275,6 +282,7 @@ def _render_story(s, a, num, total, default_emoji):
     headline = (a or {}).get("headline") or s["title"]
     category = (a or {}).get("category") if a else None
     bullets = (a or {}).get("bullets") if a else None
+    action = (a or {}).get("action") if a else None
     if not bullets:
         bullets = [s["summary"] or s["title"]]   # fallback: RSS summary as one bullet
 
@@ -286,6 +294,11 @@ def _render_story(s, a, num, total, default_emoji):
         f'<li style="margin:7px 0;line-height:1.5;">{html.escape(str(b))}</li>'
         for b in bullets
     )
+    action_html = (
+        f'<p style="margin:8px 0 0;font-size:13px;color:#0b66c3;">'
+        f'👉 <b>Do this:</b> {html.escape(str(action))}</p>'
+        if action else ""
+    )
     return f"""
 <div style="margin:26px 0;">
   <p style="margin:0 0 2px;font-size:12px;letter-spacing:1px;color:#999;text-transform:uppercase;">
@@ -294,6 +307,7 @@ def _render_story(s, a, num, total, default_emoji):
   <p style="margin:0 0 8px;font-size:13px;color:#888;">
     📰 Source: <a href="{html.escape(s['link'])}" style="color:#0b66c3;text-decoration:none;">{html.escape(s['source'])}</a> — {_src_date(s)}</p>
   <ul style="margin:0;padding-left:20px;color:#222;">{li}</ul>
+  {action_html}
 </div>
 <hr style="border:none;border-top:1px solid #eee;margin:0;">"""
 
@@ -379,7 +393,20 @@ def send_email(subject, body_html):
     log.info("Email sent to %s", to)
 
 
-def main():
+def main(argv=None):
+    """--dry-run builds the digest and writes it to a file WITHOUT emailing.
+
+    Added 03-Sep-2026: there was no way to verify this bot short of sending a
+    real newsletter, so nobody noticed it had gone quiet for 10 days.
+    """
+    import argparse
+    ap = argparse.ArgumentParser(description="Daily AI + QA news digest")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="build the digest but do not send it")
+    ap.add_argument("--out", default="digest_preview.html",
+                    help="where --dry-run writes the HTML")
+    args = ap.parse_args(argv)
+
     ai_stories = fetch_stories(FEEDS_AI, HOT_KEYWORDS, "AI", MIN_AI, MAX_AI)
     qa_stories = fetch_stories(FEEDS_QA, QA_KEYWORDS, "QA", MIN_QA, MAX_QA)
     log.info("Selected %d AI + %d QA stories", len(ai_stories), len(qa_stories))
@@ -391,6 +418,17 @@ def main():
     gmap = gemini_rewrite(ai_stories + qa_stories, api_key) if api_key else None
 
     subject, body = build_html(ai_stories, qa_stories, gmap)
+
+    if args.dry_run:
+        out = Path(args.out)
+        out.write_text(body, encoding="utf-8")
+        log.info("DRY RUN - nothing sent")
+        log.info("  subject : %s", subject)
+        log.info("  stories : %d AI + %d QA", len(ai_stories), len(qa_stories))
+        log.info("  gemini  : %s", "rewrote %d" % len(gmap) if gmap else "not used")
+        log.info("  written : %s (%d bytes)", out.resolve(), len(body))
+        return 0
+
     send_email(subject, body)
     return 0
 
