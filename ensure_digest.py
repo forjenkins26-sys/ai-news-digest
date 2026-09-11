@@ -21,6 +21,7 @@ so a working GitHub run never produces a duplicate.
     python ensure_digest.py            # check, send only if missing
     python ensure_digest.py --check    # report only, never send
     python ensure_digest.py --force    # send regardless (testing)
+    python ensure_digest.py --audit    # post-window: expect exactly one
 """
 
 from __future__ import annotations
@@ -57,11 +58,15 @@ def _load_env() -> None:
             os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
 
 
-def digest_arrived_today() -> bool | None:
-    """True/False, or None when the mailbox could not be checked.
+def count_digests_today() -> int | None:
+    """How many of today's digests are in the inbox. None = could not check.
 
-    READ-ONLY: selects the mailbox with readonly=True and uses BODY.PEEK, so
-    nothing is ever marked as read.
+    Counts every match rather than returning on the first. The old version
+    short-circuited, which answered "is one missing?" but could never answer
+    "did exactly one arrive?" -- and the two failures this file exists for were
+    a month of silence and then duplicates.
+
+    READ-ONLY: readonly=True + BODY.PEEK, so nothing is ever marked as read.
     """
     user = os.environ.get("GMAIL_ADDRESS", "")
     pw = os.environ.get("GMAIL_APP_PASSWORD", "")
@@ -76,6 +81,7 @@ def digest_arrived_today() -> bool | None:
         M.select("INBOX", readonly=True)
         typ, data = M.uid("SEARCH", None, f'(SINCE {today})')
         uids = (data[0] or b"").split()
+        found = []
         for u in uids:
             typ, d = M.uid("FETCH", u, "(BODY.PEEK[HEADER.FIELDS (SUBJECT)])")
             if not d or not d[0]:
@@ -88,24 +94,50 @@ def digest_arrived_today() -> bool | None:
             for part, enc in decode_header(subj):
                 plain += part.decode(enc or "utf-8", errors="ignore") if isinstance(part, bytes) else part
             if SUBJECT_MARK in plain:
-                log.info("today's digest already arrived: %s", plain[:70])
-                M.logout()
-                return True
+                found.append(plain[:70])
         M.logout()
-        return False
+        for i, subj in enumerate(found, 1):
+            log.info("today's digest #%d: %s", i, subj)
+        return len(found)
     except Exception as e:
         log.warning("inbox check failed (%s) - cannot confirm", e)
         return None
+
+
+def digest_arrived_today() -> bool | None:
+    """Did at least one arrive? Kept for the send decision, which only cares."""
+    n = count_digests_today()
+    return None if n is None else n >= 1
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="report only, never send")
     ap.add_argument("--force", action="store_true", help="send regardless")
+    ap.add_argument("--audit", action="store_true",
+                    help="post-window check: expect exactly one digest today")
     args = ap.parse_args()
 
     _load_env()
     arrived = None if args.force else digest_arrived_today()
+
+    if args.audit:
+        # Run AFTER both senders could have fired. Zero and two are different
+        # problems -- a gap means nobody sent, a duplicate means someone else
+        # did -- so they are reported distinctly and exit differently.
+        n = count_digests_today()
+        if n is None:
+            log.warning("AUDIT: inbox unreadable - cannot verify delivery")
+            return 2
+        if n == 1:
+            log.info("AUDIT: exactly one digest today - correct")
+            return 0
+        if n == 0:
+            log.error("AUDIT: NO digest today - delivery failed silently")
+            return 1
+        log.error("AUDIT: %d digests today - a second sender is active "
+                  "(check script.google.com and account third-party access)", n)
+        return 1
 
     if args.check:
         log.info("digest today: %s", {True: "YES", False: "NO", None: "UNKNOWN"}[arrived])
