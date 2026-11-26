@@ -80,3 +80,4 @@ both send via Gmail.
 - Rules: prompt text is always the source's verbatim text (`validate_llm_picks`), never model output.
   Subject must never contain "Daily AI & QA Digest" (the news backstop `ensure_digest.py` matches that string).
 - Repo is PUBLIC: no names, emails or profile details beyond the generic `PROFILE` string.
+- Handover for another AI agent (Muse): `HANDOVER_STEAL_THIS_PROMPT.md` — status, boundaries, runbook, backlog, change log. Keep it current after every change.
