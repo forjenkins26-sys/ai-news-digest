@@ -67,3 +67,16 @@ python ai_news_digest.py
 
 Naukri job bot is a **separate** local project at `D:\My AI Automation Building\NaukriBot`. Shares nothing except
 both send via Gmail.
+
+## Second job: Steal This Prompt (added 26-Nov-2026)
+
+- `steal_this_prompt.py` (single file) + `.github/workflows/steal_prompt.yml` (cron `45 2 * * *` = 08:15 IST,
+  `permissions: contents: write`). Spec = `STEAL_THIS_PROMPT_SPEC.md`; blindspot pass = `blindspot.md`.
+- Tests: `python -m pytest -q tests/test_steal_this_prompt.py` (30 tests). Dry run: `--dry-run` → `prompt_preview.html`.
+- State `prompt_state.json` (`sent`, `pc_seen` = prompts.chat rows already seen, `sys_seen`) and `prompt_library.md`
+  are committed by the workflow every run — that commit is the keepalive against GitHub's 60-day cron disable.
+- Gemini: model picked at runtime via ListModels (`rank_flash_models`) — hardcoded `gemini-2.0-flash` 404s since
+  at least 11-Nov-2026 (the news bot still hardcodes it and silently falls back to RSS text).
+- Rules: prompt text is always the source's verbatim text (`validate_llm_picks`), never model output.
+  Subject must never contain "Daily AI & QA Digest" (the news backstop `ensure_digest.py` matches that string).
+- Repo is PUBLIC: no names, emails or profile details beyond the generic `PROFILE` string.

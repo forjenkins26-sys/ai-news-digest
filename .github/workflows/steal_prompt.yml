@@ -1,0 +1,51 @@
+name: Steal This Prompt
+
+on:
+  schedule:
+    # 08:15 IST = 02:45 UTC (15 min after the news digest)
+    - cron: "45 2 * * *"
+  workflow_dispatch:        # manual run from the Actions tab
+
+# contents: write lets the job commit prompt_state.json + prompt_library.md.
+# That daily commit is also the keepalive: GitHub disables every cron in a repo
+# after 60 days without a commit (it killed the news digest in Aug and on 11-Nov-2026).
+permissions:
+  contents: write
+
+concurrency:
+  group: steal-this-prompt
+  cancel-in-progress: false
+
+jobs:
+  send-prompts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Send today's prompts
+        env:
+          GMAIL_ADDRESS:      ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          REPORT_EMAIL:       ${{ secrets.REPORT_EMAIL }}
+          GEMINI_API_KEY:     ${{ secrets.GEMINI_API_KEY }}
+        run: python steal_this_prompt.py
+
+      - name: Save state + library (keeps the repo active)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prompt_state.json prompt_library.md
+          git diff --cached --quiet && { echo "nothing to commit"; exit 0; }
+          git commit -m "Steal This Prompt: daily state $(date -u +%F)"
+          git pull --rebase --quiet
+          git push

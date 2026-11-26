@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 *.bak-*
 digest_preview.html
+prompt_preview.html
+.pytest_cache/

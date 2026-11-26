@@ -1,0 +1,6 @@
+Blindspot pass — Steal-This-Prompt daily job (26-Nov-2026)
+1 Unknown unknowns: repo Actions setting for GITHUB_TOKEN write (needed for keepalive commit) unread; whether Excellent AI Prompts feed bodies are full posts or paywall previews (4.4k chars seen); ensure_digest.py beyond subject match unread.
+2 Assumptions: LOAD-BEARING = the GEMINI_API_KEY secret is still valid and some free flash model exists (gemini-2.0-flash now 404s); feeds stay up; Gmail app password still valid (news email sent 11-Nov, so yes).
+3 Failure memory: memory ai_news_digest_bot.md + ensure_digest.py docstring = GitHub disables cron after 60 days without a commit (hit Aug-2026 and again 11-Nov-2026); Reddit RSS 429/404 from scripts; hardcoded model names rot.
+4 Irreversibility: pushes to a PUBLIC repo (forjenkins26-sys/ai-news-digest) are permanent and cached; sent emails cannot be unsent. Never commit .env or any email address. Subject must not contain "Daily AI & QA Digest" or the backstop treats it as the news digest.
+5 Cheapest disproof: run extraction on today's live feeds with no LLM and check it yields >=3 genuine prompts (2 min); then one workflow_dispatch run proves Gemini model discovery + email + keepalive commit (5 min).
