@@ -160,3 +160,71 @@ https://prompts.chat/?q=Machine%20Learning%20Experiment%20taste
 **Your version:** Evaluate my trading strategy backtest logs in `./data/backtest_results.csv` filtering for all strategy runs executed over the last 30 days with a drawdown greater than 15%. Create a Markdown report detailing data leakage risk, evaluation metrics, and random seed stability recommendations. Save the file to `./docs/ml_eval_audit.md`. Do not re-run backtests, alter hyperparameter values, or modify historical data files.
 
 **Drill:** Feed a recent backtest CSV from your trading scripts into Claude Code with this prompt to audit your model evaluation hygiene.
+
+## 2026-11-27
+
+### 1. Claude pushed and moved on. guard 0.4.21 can tell it the push broke CI. — dev.to #claude
+https://dev.to/boxdawn/claude-pushed-and-moved-on-guard-0421-can-tell-it-the-push-broke-ci-29em
+
+```
+Boxdawn guard: CI newly failed on the commit you just pushed (boxdawn/ci-notice-demo main @ 6f089da). Workflow 'CI': its previous run passed.
+- test → Run tests
+ test_calc.py:9 test_total assert 3.6 == 4.0 + where 3.6 = total([1.5, 2.5])
+Check whether your change caused it: gh run view 45972956440 --repo boxdawn/ci-notice-demo --log-failed (it may also be unrelated to the change).
+```
+
+**Why:** It uses CLI integration to fetch raw test execution data and isolates failures with precision. It demonstrates how to orchestrate AI agents for automated CI/CD test triage.
+
+**Your version:** Fetch the logs for the last 5 failed CI pipeline runs in my Playwright JS repository using `gh run list --limit 5` and `gh run view <id> --log-failed`. Extract the failed test file names, error stack traces, and associated Jira issue keys from recent commits into a Markdown table with columns: Run ID, Test File, Error Summary, Jira Ticket, and Root Cause Hypothesis. Output the result to stdout. Do not rerun the pipeline, comment on Jira, or edit any code.
+
+**Drill:** Open Claude Code in your Playwright repository and run this prompt to instantly summarize your team's top CI test failures from the past week.
+
+### 2. Find packages that depend on apps — prompts.chat
+https://prompts.chat/?q=Find%20packages%20that%20depend%20on%20apps
+
+```
+Audit the monorepo for shared packages (under packages/) that depend on an app or service, either directly or transitively.
+
+1. For every package.json under packages/, list the workspace dependencies that point to apps/*, services, or other non-package workspaces.
+2. Search source for imports of app modules. Use `git grep` with a pathspec rather than recursive grep. Search for both package-name imports and relative paths that escape the package.
+3. For each hit, record the importing file, the imported symbol, and whether it is used as a type or at runtime.
+4. Group the hits by root cause:
+    - a schema or generated types
+    - test support
+    - constants or headers
+    - real logic
+5. Rank the groups by how many consumers they unblock and how much build-graph weight they remove.
+
+Measure the improvement by comparing `turbo run build --dry=json --filter=<pkg>` before and after. Count tasks and dependency edges. Report numbers, not estimates. Do not change any code.
+```
+
+**Why:** It demonstrates programmatic codebase auditing using exact CLI commands (`git grep`) and strict numeric metric validation. This teaches AI engineers how to enforce rigid structural limits on agent code modifications.
+
+**Your version:** Audit my Python trading-bot repository for strategy modules under `strategies/` that import order-execution modules. Use `git grep` to find imports, group findings into 4 categories (types, backtest mocks, risk params, execution logic), and count the total dependency edges. Output a Markdown table with columns: Strategy File, Imported Module, Category, Consumer Count, Impact Rank. Print the table to terminal and do not modify any Python files.
+
+**Drill:** Execute this prompt in Claude Code against your trading bot repo to measure structural coupling before building your next automated strategy.
+
+### 3. Find convenience re-exports — prompts.chat
+https://prompts.chat/?q=Find%20convenience%20re-exports
+
+```
+Find convenience re-exports in <package>: `export * from` and `export { X } from` statements that forward symbols owned by another workspace package.
+
+For each re-export:
+
+- Name the owning package. Say whether the re-export forces consumers to install or build that package when they would not otherwise need it.
+- Count consumers with `git grep` and note which ones already depend on the owning package.
+- Classify it:
+  (a) Type-only. Usually keep it, because it has no runtime cost.
+  (b) A runtime value with few consumers. Remove it and point consumers at the owner.
+  (c) Real code that only looks like a re-export. Keep it.
+  (d) Many consumers. Defer it to its own PR.
+
+Produce a table with these columns: symbol, owner, consumers, classification, recommended action. Do not edit any files yet.
+```
+
+**Why:** It forces the AI to use shell tools (`git grep`) and enforce a rigid tabular schema while strictly prohibiting file mutations. It models how top AI engineers write static-analysis inspection prompts.
+
+**Your version:** Scan my Playwright test framework for utility files under `utils/` that re-export methods from core libraries. Use `git grep` across the last 30 test specs to count consumers for each re-export, classify them into 4 types (Type-only, Low-usage runtime, Native wrapper, High-usage core), and produce a 5-column Markdown table with columns: Method, Source File, Consumer Count, Classification, Action. Output to stdout and do not edit any files.
+
+**Drill:** Run this prompt in your QA test repo using Claude Code to pinpoint dead utility wrappers that slow down test script maintenance.
