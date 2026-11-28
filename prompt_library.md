@@ -228,3 +228,97 @@ Produce a table with these columns: symbol, owner, consumers, classification, re
 **Your version:** Scan my Playwright test framework for utility files under `utils/` that re-export methods from core libraries. Use `git grep` across the last 30 test specs to count consumers for each re-export, classify them into 4 types (Type-only, Low-usage runtime, Native wrapper, High-usage core), and produce a 5-column Markdown table with columns: Method, Source File, Consumer Count, Classification, Action. Output to stdout and do not edit any files.
 
 **Drill:** Run this prompt in your QA test repo using Claude Code to pinpoint dead utility wrappers that slow down test script maintenance.
+
+## 2026-11-28
+
+### 1. Claude Install as App: Build Your Own Desktop App With One Prompt — dev.to #claude
+https://dev.to/basedmack/claude-install-as-app-build-your-own-desktop-app-with-one-prompt-4gl3
+
+```
+Build me a desktop app called "Viral Alarm" as an artifact I can install with Share > Install as app.
+What it does:
+- I paste the links to my latest posts (Instagram, TikTok or YouTube Shorts) and type in each one's current views.
+- It remembers my normal: the median views of my posts from the last 30 days.
+- Every 15 minutes it reminds me to update the numbers for posts younger than 48 hours (one tap: paste the new view count).
+- The moment a post passes 3x my normal, it sends a desktop notification: "This one is taking off - reply to comments now."
+Design:
+- One window, dark theme, a list of my posts with views, my normal, and a "x times normal" badge that turns green at 3x.
+- A menu bar / tray item showing my best post today.
+- A global shortcut (Cmd/Ctrl+Shift+V) that opens the update box.
+Keep all data on my computer. No accounts, no logins, no servers.
+```
+
+**Why:** It defines a precise specification for interactive local artifacts with explicit operational limits and numerical triggers. This directly trains the user to spec and build AI tool artifacts and agent UIs using Claude Code.
+
+**Your version:** Build me a web dashboard artifact called 'Playwright Flakiness Radar'. I will paste the log output from my last 50 Playwright JS test runs exported from Jira. Filter for failures over the last 14 days that occur in >20% of runs. Render a summary table showing Test Name, Failure Count, and Suspected Root Cause, and export the output to a file named flaky_report.json. Do not make external API calls, modify test files, or store state on a server.
+
+**Drill:** Run this prompt in Claude Code or Claude Artifacts using 5 recent test logs to generate a working HTML/JSON flakiness dashboard.
+
+### 2. Act as a Legacy Codebase Onboarding Guide — prompts.chat
+https://prompts.chat/?q=Act%20as%20a%20Legacy%20Codebase%20Onboarding%20Guide
+
+```
+Act as a Legacy Codebase Onboarding Guide. You are a patient senior engineer who has joined many unfamiliar, poorly documented codebases and knows how to become productive in one without breaking things. I have just joined a team (or inherited a project) and need to understand an existing codebase quickly and safely.
+
+My situation:
+- Codebase: ${codebase_description:a 9-year-old monolith web app with a REST API, background jobs and a relational database}
+- Main languages and frameworks: ${tech_stack:Python, Django, Celery, PostgreSQL, some jQuery on the frontend}
+- Size and age: ${size:about 250k lines, 40 contributors over the years, 5 still active}
+- State of docs and tests: ${docs_and_tests:an outdated README, a few wiki pages, patchy unit tests, no architecture diagram}
+- My role and experience: ${my_role:backend developer, 4 years of experience, new to this domain}
+- My first assignment: ${first_task:fix a bug where invoice emails are sometimes sent twice}
+- Time I have to ramp up: ${ramp_up_time:2 weeks}
+- People I can ask: ${people:one tech lead with little free time, a product manager, a retired original author reachable by email}
+
+Guide me through the onboarding in this order:
+
+1. Orientation questions. Before giving a plan, ask me up to 5 short questions whose answers would change your advice the most (for example how deployments happen, whether there is a staging environment, who is on call). If I say "skip", continue with sensible assumptions and list them.
+
+2. Day 1 safety checklist. What to set up and verify before touching code: getting the app and tests running locally, read-only access to logs and the production database replica, where secrets live and what never to commit, how to run one test, how a change reaches production and how it is rolled back.
+
+3. Build a mental map. Give me a step-by-step reading strategy that does not try to read everything: start from entry points (routes, CLI commands, job schedulers, message consumers), follow one real request end to end, find the core domain models and the 5-10 files that change most often (show git commands such as `git log --format=format: --name-only | sort | uniq -c | sort -rn | head -30`), identify the oldest and scariest areas, and note configuration and feature flags. Tell me what to write down while reading.
+
+4. Architecture sketch. Show me how to draw a one-page map of the system as a text diagram: components, data stores, external services, queues and the direction of calls. Give a template I can fill in and tell me which questions to ask the tech lead to confirm it in 20 minutes.
+
+5. First task plan. For my first assignment, explain how to find the relevant code (search terms, logs, tracing one example), how to reproduce the problem, how to write a characterization test that pins the current behavior before changing it, how to keep the change small, and what to check in review. Point out typical legacy traps: hidden side effects, global state, implicit ordering, timezone and encoding issues, code paths only used by one big customer, and dead code that is not actually dead.
+
+6. Questions log. Give me a format for a running questions log (question, where I looked, answer, who answered, date) and explain how to batch questions so I respect busy colleagues' time.
+
+7. Two-week ramp-up plan. A day-by-day plan for ${ramp_up_time:2 weeks} with concrete goals (for example "Day 3: trace the checkout request end to end and draw it"), each with a small output I can show my lead.
+
+8. Leave it better. Suggest 3-5 small, low-risk improvements a newcomer is perfectly placed to make (README setup steps, a glossary of domain terms, a diagram, a missing test, removing a confusing warning) and how to propose them without sounding critical of the people who built the system.
+
+Rules:
+- Be practical and specific to my stack; show real commands and file patterns where useful, but never invent facts about my codebase: when something depends on code you have not seen, say what to look for instead.
+- Prefer safe, reversible steps; flag anything that could affect production data or customers.
+- Keep each section short and scannable, with checklists where they help.
+- End with the 3 things I should do first tomorrow morning.
+```
+
+**Why:** It structures context ingestion and legacy codebase analysis into interactive, controlled steps. It is perfect for leveraging Claude Code to safely audit existing automation frameworks and Python trading scripts.
+
+**Your version:** Act as an AI Codebase Analyst. Scan my local Python trading-bot repository containing 15 script files and analyze commit logs from the last 90 days. Identify high-risk modules with a volatility score above 0.7 and write a Markdown file to /docs/architecture_summary.md with the top 3 performance bottlenecks. Ask me up to 3 clarifying questions before producing the output file. Do not refactor existing functions or delete code comments.
+
+**Drill:** Execute this prompt in Claude Code against a local Python trading script folder to generate an architectural audit file.
+
+### 3. Find Viral Content Ideas With Claude: The Outlier Method — dev.to #claude
+https://dev.to/basedmack/find-viral-content-ideas-with-claude-the-outlier-method-4mb9
+
+```
+You're my content strategist. Below is a list of short videos that did much better than their creator's normal (outlier = views divided by the creator's median views).
+For each video I give you: the link or a description, the hook (first line), the outlier score, and the creator's niche.
+[paste your list here]
+Do this:
+1. Group the videos into 3-6 repeatable FORMATS (the structure, not the topic). Name each format in 3-5 words.
+2. For each format, explain in one sentence WHY it works (curiosity, payoff, relatability, surprise...).
+3. For each format, write 5 ideas adapted to my niche: [your niche] and my audience: [who they are].
+4. For each idea, write the hook as the first line, under 12 words.
+5. Flag any idea that only worked because of the original creator's fame or a trend that has passed.
+Be specific. No generic advice.
+```
+
+**Why:** It demonstrates structured pattern extraction from noisy data sets using exact count constraints, negative rules, and tailored outputs. It helps transition QA automation logic into AI evaluation pipelines.
+
+**Your version:** Analyze the last 100 closed Jira tickets from our Playwright JS test suite exported via CSV. Group the test failures into 3-6 root-cause patterns, explain each pattern in 1 sentence, and generate 3 reusable Playwright helper functions to handle those edge cases. Save the formatted report to docs/flaky_patterns.md. Do not suggest generic retries or rely on unverified assumptions.
+
+**Drill:** Export 20 Jira bug tickets to CSV, run the adapted prompt in Claude, and verify if the generated helper functions address the top test failure pattern.
